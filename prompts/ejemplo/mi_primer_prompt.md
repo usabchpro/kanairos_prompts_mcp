@@ -1,0 +1,1 @@
+Este es un prompt de ejemplo para probar la funcionalidad.

@@ -2,32 +2,23 @@ import os
 import json
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import Response
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 
-
+# ==============================================================================
+# CLASE LÓGICA DEL MCP
+# ==============================================================================
 class PromptHouseMCP:
-    """
-    Lógica de negocio para la interfaz MCP de KanAIrOS Prompts.
-
-    Almacena prompts en subdirectorios por categoría y ofrece operaciones
-    CRUD (crear, leer, actualizar, eliminar) a través de herramientas MCP.
-    Cada método devuelve un diccionario con la clave `success` para indicar
-    éxito o fallo y los datos correspondientes.
-    """
-
-    def __init__(self) -> None:
-        # Directorio donde se guardan todas las categorías y prompts.
-        self.prompts_dir: str = os.path.join(os.path.dirname(__file__), "prompts")
+    def __init__(self):
+        self.prompts_dir = os.path.join(os.path.dirname(__file__), "prompts")
         os.makedirs(self.prompts_dir, exist_ok=True)
 
     def _get_prompt_path(self, name: str, category: str) -> str:
-        """Devuelve la ruta completa al archivo de un prompt determinado."""
         category_path = os.path.join(self.prompts_dir, category)
         os.makedirs(category_path, exist_ok=True)
         return os.path.join(category_path, f"{name}.md")
 
-    def _list_tools(self) -> Dict[str, List[Dict]]:
-        """Devuelve la lista de herramientas disponibles con sus esquemas."""
+    def _list_tools(self) -> dict:
+        # Definición de herramientas con outputSchema
         return {
             "tools": [
                 {
@@ -46,21 +37,31 @@ class PromptHouseMCP:
                     "outputSchema": {
                         "type": "object",
                         "properties": {
-                            "message": {"type": "string"},
-                            "success": {"type": "boolean"}
+                            "message": {"type": "string"}
                         },
-                        "required": ["message", "success"]
+                        "required": ["message"]
+                    }
+                },
+                {
+                    "name": "prompts.list_categories",
+                    "title": "List Categories",
+                    "description": "Lista las categorías de prompts disponibles",
+                    "inputSchema": {"type": "object", "properties": {}, "required": []},
+                    "outputSchema": {
+                        "type": "object",
+                        "properties": {
+                            "categories": {"type": "array", "items": {"type": "string"}}
+                        },
+                        "required": ["categories"]
                     }
                 },
                 {
                     "name": "prompts.list_prompts",
                     "title": "List Prompts",
-                    "description": "Lista los prompts por categoría",
+                    "description": "Lista todos los prompts organizados por categoría (o de una categoría)",
                     "inputSchema": {
                         "type": "object",
-                        "properties": {
-                            "category": {"type": "string"}
-                        },
+                        "properties": {"category": {"type": "string"}},
                         "required": []
                     },
                     "outputSchema": {
@@ -68,35 +69,10 @@ class PromptHouseMCP:
                         "properties": {
                             "prompts": {
                                 "type": "object",
-                                "additionalProperties": {
-                                    "type": "array",
-                                    "items": {"type": "string"}
-                                }
-                            },
-                            "success": {"type": "boolean"}
+                                "additionalProperties": {"type": "array", "items": {"type": "string"}}
+                            }
                         },
-                        "required": ["prompts", "success"]
-                    }
-                },
-                {
-                    "name": "prompts.list_categories",
-                    "title": "List Categories",
-                    "description": "Lista las categorías de prompts disponibles",
-                    "inputSchema": {
-                        "type": "object",
-                        "properties": {},
-                        "required": []
-                    },
-                    "outputSchema": {
-                        "type": "object",
-                        "properties": {
-                            "categories": {
-                                "type": "array",
-                                "items": {"type": "string"}
-                            },
-                            "success": {"type": "boolean"}
-                        },
-                        "required": ["categories", "success"]
+                        "required": ["prompts"]
                     }
                 },
                 {
@@ -105,19 +81,13 @@ class PromptHouseMCP:
                     "description": "Carga el contenido de un prompt existente",
                     "inputSchema": {
                         "type": "object",
-                        "properties": {
-                            "name": {"type": "string"},
-                            "category": {"type": "string"}
-                        },
+                        "properties": {"name": {"type": "string"}, "category": {"type": "string"}},
                         "required": ["name", "category"]
                     },
                     "outputSchema": {
                         "type": "object",
-                        "properties": {
-                            "content": {"type": "string"},
-                            "success": {"type": "boolean"}
-                        },
-                        "required": ["content", "success"]
+                        "properties": {"content": {"type": "string"}},
+                        "required": ["content"]
                     }
                 },
                 {
@@ -126,106 +96,69 @@ class PromptHouseMCP:
                     "description": "Elimina un prompt existente de una categoría",
                     "inputSchema": {
                         "type": "object",
-                        "properties": {
-                            "name": {"type": "string"},
-                            "category": {"type": "string"}
-                        },
+                        "properties": {"name": {"type": "string"}, "category": {"type": "string"}},
                         "required": ["name", "category"]
                     },
                     "outputSchema": {
                         "type": "object",
-                        "properties": {
-                            "message": {"type": "string"},
-                            "success": {"type": "boolean"}
-                        },
-                        "required": ["message", "success"]
+                        "properties": {"message": {"type": "string"}},
+                        "required": ["message"]
                     }
                 },
                 {
                     "name": "prompts.help",
                     "title": "Help",
-                    "description": "Muestra ayuda de uso de KanAIrOS Prompts MCP",
-                    "inputSchema": {
-                        "type": "object",
-                        "properties": {},
-                        "required": []
-                    },
+                    "description": "Muestra instrucciones de uso del MCP",
+                    "inputSchema": {"type": "object", "properties": {}, "required": []},
                     "outputSchema": {
                         "type": "object",
-                        "properties": {
-                            "help": {
-                                "type": "array",
-                                "items": {"type": "string"}
-                            },
-                            "success": {"type": "boolean"}
-                        },
-                        "required": ["help", "success"]
+                        "properties": {"help": {"type": "array", "items": {"type": "string"}}},
+                        "required": ["help"]
                     }
                 }
             ]
         }
 
-    # Métodos de las herramientas
-    def save_prompt(self, name: str, category: str, prompt_content: str) -> Dict[str, object]:
-        """Guarda el prompt en la categoría indicada."""
+    def save_prompt(self, name: str, category: str, prompt_content: str) -> dict:
         path = self._get_prompt_path(name, category)
-        try:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(prompt_content)
-            return {"success": True, "message": f"Prompt '{name}' saved in '{category}'."}
-        except Exception as e:
-            raise ValueError(str(e))
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(prompt_content)
+        return {"message": f"Prompt '{name}' saved in '{category}'."}
 
-    def list_prompts(self, category: Optional[str] = None) -> Dict[str, object]:
-        """Lista los prompts existentes agrupados por categoría."""
-        prompts: Dict[str, List[str]] = {}
+    def list_categories(self) -> dict:
+        cats = [name for name in os.listdir(self.prompts_dir)
+                if os.path.isdir(os.path.join(self.prompts_dir, name))]
+        return {"categories": cats}
+
+    def list_prompts(self, category: Optional[str] = None) -> dict:
+        grouped: Dict[str, List[str]] = {}
         if category:
-            path = os.path.join(self.prompts_dir, category)
-            if os.path.isdir(path):
-                prompts[category] = [fn[:-3] for fn in os.listdir(path) if fn.endswith(".md")]
-            else:
-                prompts[category] = []
+            cat_path = os.path.join(self.prompts_dir, category)
+            grouped[category] = [fn[:-3] for fn in os.listdir(cat_path) if fn.endswith('.md')] if os.path.isdir(cat_path) else []
         else:
-            for cat in os.listdir(self.prompts_dir):
-                path = os.path.join(self.prompts_dir, cat)
+            for entry in os.listdir(self.prompts_dir):
+                path = os.path.join(self.prompts_dir, entry)
                 if os.path.isdir(path):
-                    prompts[cat] = [fn[:-3] for fn in os.listdir(path) if fn.endswith(".md")]
-        return {"success": True, "prompts": prompts}
+                    grouped[entry] = [fn[:-3] for fn in os.listdir(path) if fn.endswith('.md')]
+        return {"prompts": grouped}
 
-    def list_categories(self) -> Dict[str, object]:
-        """Devuelve una lista de categorías disponibles."""
-        categories = [name for name in os.listdir(self.prompts_dir)
-                      if os.path.isdir(os.path.join(self.prompts_dir, name))]
-        return {"success": True, "categories": categories}
-
-    def load_prompt(self, name: str, category: str) -> Dict[str, object]:
-        """Carga el contenido de un prompt."""
+    def load_prompt(self, name: str, category: str) -> dict:
         path = self._get_prompt_path(name, category)
         if not os.path.isfile(path):
             raise ValueError(f"'{name}' not found in '{category}'.")
-        try:
-            with open(path, "r", encoding="utf-8") as f:
-                content = f.read()
-            return {"success": True, "content": content}
-        except Exception as e:
-            raise ValueError(str(e))
+        with open(path, "r", encoding="utf-8") as f:
+            content = f.read()
+        return {"content": content}
 
-        return {"success": True, "content": content}
-
-    def delete_prompt(self, name: str, category: str) -> Dict[str, object]:
-        """Elimina un prompt."""
+    def delete_prompt(self, name: str, category: str) -> dict:
         path = self._get_prompt_path(name, category)
         if not os.path.isfile(path):
             raise ValueError(f"'{name}' not found in '{category}'.")
-        try:
-            os.remove(path)
-            return {"success": True, "message": f"Prompt '{name}' deleted from '{category}'."}
-        except Exception as e:
-            raise ValueError(str(e))
+        os.remove(path)
+        return {"message": f"Prompt '{name}' deleted from '{category}'."}
 
-    def help(self) -> Dict[str, object]:
-        """Devuelve un texto con la ayuda de uso."""
-        text = [
+    def help(self) -> dict:
+        texto = [
             "Uso de kanairos-prompts MCP:",
             "1) prompts.list_categories → ver categorías disponibles",
             "2) prompts.list_prompts {\"category\": <cat>} → ver prompts en esa categoría",
@@ -234,75 +167,50 @@ class PromptHouseMCP:
             "5) prompts.load_prompt {\"name\": <n>, \"category\": <c>} → obtener contenido",
             "6) prompts.delete_prompt {\"name\": <n>, \"category\": <c>}"
         ]
-        return {"success": True, "help": text}
+        return {"help": texto}
 
-
-# Instancia de FastAPI y MCP
+# ==============================================================================
+# SERVIDOR FASTAPI CON ENDPOINT JSON-RPC UNIFICADO Y WRAPPING
+# ==============================================================================
 app = FastAPI()
 mcp = PromptHouseMCP()
 
-
 @app.post("/")
 async def mcp_endpoint(request: Request):
-    """Endpoint único que implementa JSON-RPC para el MCP."""
     payload = await request.json()
     req_id = payload.get("id")
     method = payload.get("method")
     params = payload.get("params", {})
 
-    # Notificaciones (no llevan id) → 204 No Content
     if req_id is None:
         return Response(status_code=204)
 
-    # initialize
     if method == "initialize":
         tools = mcp._list_tools()["tools"]
-        return {
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "result": {
-                "protocolVersion": "2025-03-26",
-                "capabilities": {"tools": {}},
-                "serverInfo": {"name": "kanairos-prompts", "version": "0.1.0"},
-                "tools": tools
-            }
-        }
+        return {"jsonrpc": "2.0", "id": req_id,
+                "result": {"protocolVersion": "2025-03-26", "capabilities": {"tools": {}},
+                           "serverInfo": {"name": "kanairos-prompts", "version": "0.1.0"},
+                           "tools": tools}}
 
-    # tools/list
     if method == "tools/list":
         tools = mcp._list_tools()["tools"]
-        return {
-            "jsonrpc": "2.0",
-            "id": req_id,
-            "result": {"tools": tools}
-        }
+        return {"jsonrpc": "2.0", "id": req_id, "result": {"tools": tools}}
 
-    # tools/call
     if method == "tools/call":
-        # El campo puede llamarse "tool" o "name" según el cliente
-        tool_name = params.get("tool") or params.get("name")
+        tool = params.get("tool") or params.get("name")
+        if not tool:
+            return {"jsonrpc": "2.0", "id": req_id,
+                    "error": {"code": -32602, "message": "Missing 'tool' parameter"}}
         args = params.get("arguments", {})
-        if not tool_name:
-            return {
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "error": {"code": -32602, "message": "Missing 'tool' parameter"}
-            }
-        func_name = tool_name.split(".")[-1]
+        func_name = tool.split('.')[-1]
         if not hasattr(mcp, func_name):
-            return {
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "error": {"code": -32601, "message": f"Method '{tool_name}' not found."}
-            }
-
+            return {"jsonrpc": "2.0", "id": req_id,
+                    "error": {"code": -32601, "message": f"Method '{tool}' not found."}}
         try:
-            raw = getattr(mcp, func_name)(**args)  # Ejecuta la herramienta
-            # Formateamos un texto legible para mostrar en 'content'.
+            raw = getattr(mcp, func_name)(**args)
             text = json.dumps(raw, indent=2, ensure_ascii=False)
             return {
-                "jsonrpc": "2.0",
-                "id": req_id,
+                "jsonrpc": "2.0", "id": req_id,
                 "result": {
                     "content": [{"type": "text", "text": text}],
                     "structuredContent": raw,
@@ -310,29 +218,15 @@ async def mcp_endpoint(request: Request):
                 }
             }
         except ValueError as e:
-            # Error controlado de la herramienta
             return {
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "result": {
-                    "content": [{"type": "text", "text": str(e)}],
-                    "isError": True
-                }
+                "jsonrpc": "2.0", "id": req_id,
+                "result": {"content": [{"type": "text", "text": str(e)}], "isError": True}
             }
         except Exception as e:
-            # Error interno → se informa en el objeto `error` de JSON-RPC
-            return {
-                "jsonrpc": "2.0",
-                "id": req_id,
-                "error": {
-                    "code": -32000,
-                    "message": f"Internal server error: {str(e)}"
-                }
-            }
+            return {"jsonrpc": "2.0", "id": req_id,
+                    "error": {"code": -32000, "message": f"Internal server error: {str(e)}"}}
 
-    # Método desconocido
     raise HTTPException(status_code=404, detail=f"Method '{method}' not found")
-
 
 if __name__ == "__main__":
     import uvicorn

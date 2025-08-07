@@ -1,0 +1,1 @@
+Este es el primer prompt guardado en el MCP.
