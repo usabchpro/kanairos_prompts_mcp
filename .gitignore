@@ -7,3 +7,5 @@ env/
 dist/
 build/
 node_modules/
+prompts/*
+!prompts/.gitkeep
